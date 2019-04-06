@@ -8,6 +8,8 @@ License: GNU GENERAL PUBLIC LICENSE v3
 Language: Arduino (C/C++)
 Description: Jeu du SIMON, un jeu de mémoire
 */
+#include "ESP8266TrueRandom.h"
+/* DEBUG MODE */
 #define DEBUG
 
 /* PINOUTS */
@@ -25,7 +27,7 @@ Description: Jeu du SIMON, un jeu de mémoire
 #define SEQ_SIZE 128
 
 enum{
-  LED1 = 0,
+  LED1 = 1,
   LED2,
   LED3,
   LED4
@@ -33,14 +35,19 @@ enum{
 const int nb_led = 4;
 
 int seq_leds[SEQ_SIZE];
+int i_seq;
 
 /* PROTOTYPE */
+void addLED2SEQ(int*, int);
+int checkSEQ(int, int*, int*);
 void ledON(int);
 void ledsON(int);
 int randomLED(void);
 int readButtons(void);
-void readSEQ(int*);
-void writeSEQ(int*);
+int readSEQ(int*);
+void playSEQ(int*);
+void signal(int, int);
+void validate(void);
 
 
 /*********/
@@ -73,26 +80,43 @@ void setup(void)
 /********/
 void loop(void)
 {
-#ifdef DEBUG
-  Serial.println("Write SEQ");
-#endif//DEBUG
-  writeSEQ(seq_leds);
-#ifdef DEBUG
-  Serial.println("Read SEQ");
-#endif//DEBUG
-  readSEQ(seq_leds);
+  i_seq = 1;
 
-  while(1)
+#ifdef DEBUG
+  Serial.println("START GAME");
+#endif//DEBUG
+  validate();
+
+  for(int i=1 ; i < SEQ_SIZE ; i++)
   {
-    Serial.println("FIN");
-    delay(1000);
+  #ifdef DEBUG
+    Serial.print("SEQUENCE N°");
+    Serial.println(i);
+  #endif//DEBUG
+    addLED2SEQ(seq_leds, i);
+    playSEQ(seq_leds);
+    delay(100);
+    signal(1, 50);
+    delay(100);
   }
+
+#ifdef DEBUG
+  Serial.println("END GAME");
+#endif//DEBUG
 }
 
 
 /****************/
 /* INPUT/OUTPUT */
 /****************/
+void ledON(int led)
+{
+  digitalWrite(led, HIGH);
+  delay(DELAYON);
+  digitalWrite(led, LOW);
+  delay(DELAYON);
+}
+
 void ledsON(int led)
 {
   switch(led)
@@ -110,14 +134,6 @@ void ledsON(int led)
       ledON(LED_PIN4);
       break;
   }
-}
-
-void ledON(int led)
-{
-  digitalWrite(led, HIGH);
-  delay(DELAYON);
-  digitalWrite(led, LOW);
-  delay(DELAYON);
 }
 
 int readButtons(void)
@@ -152,28 +168,100 @@ int readButtons(void)
 /************/
 /* SEQUENCE */
 /************/
-void readSEQ(int *sequence)
+void addLED2SEQ(int *sequence, int i)
 {
-  for(int i=0 ; i < 10 ; i++)
+  sequence[i-1] = randomLED();
+#ifdef DEBUG
+  Serial.print("Ajouter à la chaine: ");
+  Serial.println(sequence[i-1]);
+#endif//DEBUG
+}
+
+void playSEQ(int *sequence)
+{
+#ifdef DEBUG
+  Serial.print("LEDs number:");
+#endif//DEBUG
+  for(int i=0 ; sequence[i] != 0 ; i++)
   {
   #ifdef DEBUG
-    Serial.print("read LED: ");
-    Serial.println(sequence[i]);
+    Serial.print(" ");
+    Serial.print(sequence[i]);
   #endif//DEBUG
     ledsON(sequence[i]);
   }
+#ifdef DEBUG
+  Serial.println();
+#endif//DEBUG
 }
 
-void writeSEQ(int *sequence)
+int readSEQ(int *seq)
 {
-  for(int i=0 ; i < 10 ; i++)
+  int seq_tmp[SEQ_SIZE];
+  int i_tmp = 0;
+
+  for(int i=0 ; i < i_seq ; i++)
   {
-    sequence[i] = randomLED();
-  #ifdef DEBUG
-    Serial.print("wite LED: ");
-    Serial.println(sequence[i]);
-  #endif//DEBUG
+    seq_tmp[i] = readButtons();
+
+    if(checkSEQ(i_tmp, seq, seq_tmp) == 1)
+      return 1;
   }
+
+  return 0;
+}
+
+int checkSEQ(int nb, int *seq1, int *seq2)
+{
+  if(seq1 == NULL || seq2 == NULL)
+  {
+  #ifdef DEBUG
+    Serial.println("[checkSEQ]: NULL Pointers");
+  #endif//DEBUG
+    return -1;
+  }
+
+  for(int i=0 ; i<nb ; i++)
+  {
+    if(seq1[i] != seq2[i])
+    {
+    #ifdef DEBUG
+      Serial.println("Bad sequence");
+    #endif//DEBUG
+      return 1;
+    }
+  }
+  return 0;
+}
+
+int printSEQ(int *sequence)
+{
+  if(sequence == NULL)
+  {
+  #ifdef DEBUG
+    Serial.println("[printSEQ]: NULL Pointers");
+  #endif//DEBUG
+    return -1;
+  }
+
+  //for(int i=0 ; 0 )
+}
+
+int recordSEQ(int nb, int *seq1, int *seq2)
+{
+  if(seq1 == NULL || seq2 == NULL)
+  {
+  #ifdef DEBUG
+    Serial.println("[recordSEQ]: NULL Pointers");
+  #endif//DEBUG
+    return -1;
+  }
+  
+  for(int i=0 ; i<nb ; i++)
+  {
+    seq1[i] = seq2[i];
+  }
+  return 0;
 }
 
 
@@ -182,7 +270,36 @@ void writeSEQ(int *sequence)
 /**********/
 int randomLED(void)
 {
-  return random(4);
+  return ESP8266TrueRandom.random(1, nb_led+1);
+}
+
+void signal(int nb, int delay_)
+{
+  for(int i=0 ; i < nb ; i++)
+  {
+    digitalWrite(LED_PIN1, HIGH);
+    digitalWrite(LED_PIN2, HIGH);
+    digitalWrite(LED_PIN3, HIGH);
+    digitalWrite(LED_PIN4, HIGH);
+    delay(delay_);
+    digitalWrite(LED_PIN1, LOW);
+    digitalWrite(LED_PIN2, LOW);
+    digitalWrite(LED_PIN3, LOW);
+    digitalWrite(LED_PIN4, LOW);
+    delay(delay_);
+  }
+}
+
+void validate(void)
+{
+#ifdef DEBUG
+  Serial.println("Appuyer sur le bouton.");
+#endif//DEBUG
+  while(digitalRead(SW_PIN1) == 0)//Améliorer la vitesse de lecture
+  {
+    /* Faire clignoter les LEDs avant de commencer la partie */
+    signal(1, DELAYON);
+  }
 }
 
 
