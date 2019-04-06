@@ -1,3 +1,13 @@
+/*
+Project: SIMON
+File: simon.ino
+Version: 0.1
+Create by: Rom1 <rom1@canel.ch> - CANEL - https://www.canel.ch
+Date: 06/04/19
+License: GNU GENERAL PUBLIC LICENSE v3
+Language: Arduino (C/C++)
+Description: Jeu du SIMON, un jeu de mémoire
+*/
 #define LED_PIN1 D0
 #define LED_PIN2 D1
 #define LED_PIN3 D2
@@ -23,9 +33,6 @@ int readButtons(void);
 
 void setup(void)
 {
-  Serial.begin(115200);
-  Serial.println("Coucou");
-
   pinMode(LED_PIN1, OUTPUT);
   pinMode(LED_PIN2, OUTPUT);
   pinMode(LED_PIN3, OUTPUT);
@@ -35,11 +42,13 @@ void setup(void)
   pinMode(SW_PIN2, INPUT);
   pinMode(SW_PIN3, INPUT);
   pinMode(SW_PIN4, INPUT);
+
+  randomSeed(analogRead(0));
 }
 
 void loop(void)
 {
-  ledsON(readButtons());
+  ledsON(random(4));
 }
 
 void ledsON(int led)
