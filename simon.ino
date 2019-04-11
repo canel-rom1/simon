@@ -9,6 +9,7 @@ Language: Arduino (C/C++)
 Description: Jeu du SIMON, un jeu de mémoire
 */
 #include "ESP8266TrueRandom.h"
+
 /* DEBUG MODE */
 #define DEBUG
 
@@ -40,6 +41,8 @@ int i_seq;
 /* PROTOTYPE */
 void addLED2SEQ(int*, int);
 int checkSEQ(int, int*, int*);
+int initInterruptSW(int button);
+//int initInterruptSW(int button, void *buttonISR);
 void ledON(int);
 void ledsON(int);
 int randomLED(void);
@@ -49,6 +52,7 @@ void playSEQ(int*);
 void signal(int, int);
 void validate(void);
 
+void buttonISR(void);
 
 /*********/
 /* SETUP */
@@ -69,7 +73,9 @@ void setup(void)
   pinMode(SW_PIN1, INPUT);
   pinMode(SW_PIN2, INPUT);
   pinMode(SW_PIN3, INPUT);
-  pinMode(SW_PIN4, INPUT);
+  //pinMode(SW_PIN4, INPUT);
+
+  initInterruptSW(SW_PIN4);
 
   randomSeed(analogRead(0));
 }
@@ -82,6 +88,7 @@ void loop(void)
 {
   i_seq = 1;
 
+/*
 #ifdef DEBUG
   Serial.println("START GAME");
 #endif//DEBUG
@@ -99,6 +106,17 @@ void loop(void)
     signal(1, 50);
     delay(100);
   }
+*/
+
+delay(5000);
+Serial.println("Disable Interrupt");
+//noInterrupts();
+detachInterrupt(digitalPinToInterrupt(SW_PIN4));
+delay(5000);
+digitalRead(SW_PIN4);
+interrupts();
+Serial.println("Enable Interrupt");
+  initInterruptSW(SW_PIN4);
 
 #ifdef DEBUG
   Serial.println("END GAME");
@@ -109,6 +127,35 @@ void loop(void)
 /****************/
 /* INPUT/OUTPUT */
 /****************/
+int initInterruptSW(int button)
+//int initInterruptSW(int button, void *buttonISR_)
+{
+  pinMode(button, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(button), buttonISR, RISING);
+  //attachInterrupt(digitalPinToInterrupt(button), buttonISR_, RISING);
+}
+
+void enableInterrupts()
+{
+  initInterruptSW(SW_PIN1);
+  initInterruptSW(SW_PIN2);
+  initInterruptSW(SW_PIN3);
+  initInterruptSW(SW_PIN4);
+}
+
+void disableInterrupts()
+{
+  detachInterrupt(digitalPinToInterrupt(SW_PIN1));
+  detachInterrupt(digitalPinToInterrupt(SW_PIN2));
+  detachInterrupt(digitalPinToInterrupt(SW_PIN3));
+  detachInterrupt(digitalPinToInterrupt(SW_PIN4));
+}
+
+void buttonISR(void)
+{
+  Serial.println("interrupt");
+}
+
 void ledON(int led)
 {
   digitalWrite(led, HIGH);
@@ -197,18 +244,21 @@ void playSEQ(int *sequence)
 
 int readSEQ(int *seq)
 {
+  int ret = 0;
   int seq_tmp[SEQ_SIZE];
   int i_tmp = 0;
 
+  disableInterrupts();
   for(int i=0 ; i < i_seq ; i++)
   {
     seq_tmp[i] = readButtons();
 
     if(checkSEQ(i_tmp, seq, seq_tmp) == 1)
-      return 1;
+      ret=1;
   }
+  enableInterrupts();
 
-  return 0;
+  return ret;
 }
 
 int checkSEQ(int nb, int *seq1, int *seq2)
