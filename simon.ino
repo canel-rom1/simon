@@ -40,7 +40,6 @@ int i_seq;
 
 /* PROTOTYPE */
 void addLED2SEQ(int*, int);
-int checkSEQ(int, int*, int*);
 int initInterruptSW(int button);
 //int initInterruptSW(int button, void *buttonISR);
 void ledON(int);
@@ -48,7 +47,7 @@ void ledsON(int);
 int randomLED(void);
 int readButtons(void);
 int readSEQ(int*,int);
-void playSEQ(int*);
+void playSEQ(int*, int);
 void signal(int, int);
 void validate(void);
 
@@ -86,7 +85,7 @@ void setup(void)
 /********/
 void loop(void)
 {
-  int i = 1;//static ou pas
+  int i = 1;
 
 #ifdef DEBUG
   Serial.println("START GAME");
@@ -100,32 +99,15 @@ void loop(void)
     Serial.println(i);
   #endif//DEBUG
     addLED2SEQ(seq_leds, i);
-    playSEQ(seq_leds);
+    playSEQ(seq_leds, i);
     if(readSEQ(seq_leds, i))
-    {
       break;
-    }
     i++;
   }
-
-/*
-delay(5000);
-Serial.println("Disable Interrupt");
-//noInterrupts();
-detachInterrupt(digitalPinToInterrupt(SW_PIN4));
-delay(5000);
-digitalRead(SW_PIN4);
-interrupts();
-Serial.println("Enable Interrupt");
-  initInterruptSW(SW_PIN4);
-*/
 
 #ifdef DEBUG
   Serial.println("END GAME");
 #endif//DEBUG
-  delay(100);
-  signal(10, 50);
-  delay(100);
 }
 
 
@@ -161,12 +143,11 @@ void buttonISR(void)
   Serial.println("interrupt");
 }
 
-void ledON(int led)
+void ledON(int led, int delayON)
 {
   digitalWrite(led, HIGH);
-  delay(DELAYON);
+  delay(delayON);
   digitalWrite(led, LOW);
-  delay(DELAYON);
 }
 
 void ledsON(int led)
@@ -174,16 +155,20 @@ void ledsON(int led)
   switch(led)
   {
     case LED1:
-      ledON(LED_PIN1);
+      ledON(LED_PIN1, DELAYON);
+      delay(DELAYON);
       break;
     case LED2:
-      ledON(LED_PIN2);
+      ledON(LED_PIN2, DELAYON);
+      delay(DELAYON);
       break;
     case LED3:
-      ledON(LED_PIN3);
+      ledON(LED_PIN3, DELAYON);
+      delay(DELAYON);
       break;
     case LED4:
-      ledON(LED_PIN4);
+      ledON(LED_PIN4, DELAYON);
+      delay(DELAYON);
       break;
   }
 }
@@ -194,6 +179,7 @@ int readButtons(void)
   {
     if(digitalRead(SW_PIN1))
     {
+      //ledsON()
       delay(300);
       return LED1;
     }
@@ -229,12 +215,12 @@ void addLED2SEQ(int *sequence, int i)
 #endif//DEBUG
 }
 
-void playSEQ(int *sequence)
+void playSEQ(int *sequence, int nb_seq)
 {
 #ifdef DEBUG
   Serial.print("LEDs number:");
 #endif//DEBUG
-  for(int i=0 ; sequence[i] != 0 ; i++)
+  for(int i=0 ; i < nb_seq ; i++)
   {
   #ifdef DEBUG
     Serial.print(" ");
@@ -247,10 +233,10 @@ void playSEQ(int *sequence)
 #endif//DEBUG
 }
 
-int readSEQ(int *seq, int i_array)
+int readSEQ(int *seq, int nb_seq)
 {
   disableInterrupts();
-  for(int i=0 ; i < i_array ; i++)
+  for(int i=0 ; i < nb_seq ; i++)
   {
     if(seq[i] != readButtons())
     {
@@ -266,59 +252,6 @@ int readSEQ(int *seq, int i_array)
 #ifdef DEBUG
   Serial.println("Séquence OK");
 #endif//DEBUG
-  return 0;
-}
-
-int checkSEQ(int nb, int *seq1, int *seq2)
-{
-  if(seq1 == NULL || seq2 == NULL)
-  {
-  #ifdef DEBUG
-    Serial.println("[checkSEQ]: NULL Pointers");
-  #endif//DEBUG
-    return -1;
-  }
-
-  for(int i=0 ; i<nb ; i++)
-  {
-    if(seq1[i] != seq2[i])
-    {
-    #ifdef DEBUG
-      Serial.println("Bad sequence");
-    #endif//DEBUG
-      return 1;
-    }
-  }
-  return 0;
-}
-
-int printSEQ(int *sequence)
-{
-  if(sequence == NULL)
-  {
-  #ifdef DEBUG
-    Serial.println("[printSEQ]: NULL Pointers");
-  #endif//DEBUG
-    return -1;
-  }
-
-  //for(int i=0 ; 0 )
-}
-
-int recordSEQ(int nb, int *seq1, int *seq2)
-{
-  if(seq1 == NULL || seq2 == NULL)
-  {
-  #ifdef DEBUG
-    Serial.println("[recordSEQ]: NULL Pointers");
-  #endif//DEBUG
-    return -1;
-  }
-  
-  for(int i=0 ; i<nb ; i++)
-  {
-    seq1[i] = seq2[i];
-  }
   return 0;
 }
 
