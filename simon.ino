@@ -24,8 +24,9 @@ Description: Jeu du SIMON, un jeu de mémoire
 #define SW_PIN3 D7
 #define SW_PIN4 D8
 
-#define DELAYON 500
-#define SEQ_SIZE 128
+#define DELAYON 500               // Temps de clignotement dans LEDS [ms]
+#define DELAYSEQ 1500             // Délais entre la fin de la saisie et la prochaine séquence [ms]
+#define SEQ_SIZE 128              // Taille du temps contenant la séquence
 
 enum{
   LED1 = 1,
@@ -35,15 +36,14 @@ enum{
 };
 const int nb_led = 4;
 
-int seq_leds[SEQ_SIZE];
-int i_seq;
-
 /* PROTOTYPE */
 void addLED2SEQ(int*, int);
 int initInterruptSW(int button);
 //int initInterruptSW(int button, void *buttonISR);
-void ledON(int);
-void ledsON(int);
+int ledNum2Pin(int led);
+void ledOff(int led);
+void ledOn(int led);
+void ledOnFor(int led, int delayOn);
 int randomLED(void);
 int readButtons(void);
 int readSEQ(int*,int);
@@ -86,6 +86,7 @@ void setup(void)
 void loop(void)
 {
   int i = 1;
+  int seq_leds[SEQ_SIZE];
 
 #ifdef DEBUG
   Serial.println("START GAME");
@@ -103,6 +104,7 @@ void loop(void)
     if(readSEQ(seq_leds, i))
       break;
     i++;
+    delay(DELAYSEQ);
   }
 
 #ifdef DEBUG
@@ -143,34 +145,46 @@ void buttonISR(void)
   Serial.println("interrupt");
 }
 
-void ledON(int led, int delayON)
-{
-  digitalWrite(led, HIGH);
-  delay(delayON);
-  digitalWrite(led, LOW);
-}
-
-void ledsON(int led)
+int ledNum2Pin(int led)
 {
   switch(led)
   {
     case LED1:
-      ledON(LED_PIN1, DELAYON);
-      delay(DELAYON);
-      break;
+      return LED_PIN1;
     case LED2:
-      ledON(LED_PIN2, DELAYON);
-      delay(DELAYON);
-      break;
+      return LED_PIN2;
     case LED3:
-      ledON(LED_PIN3, DELAYON);
-      delay(DELAYON);
-      break;
+      return LED_PIN3;
     case LED4:
-      ledON(LED_PIN4, DELAYON);
-      delay(DELAYON);
-      break;
+      return LED_PIN4;
+    default:
+      return -1;
   }
+}
+
+void ledOff(int led)
+{
+  digitalWrite(ledNum2Pin(led), LOW);
+}
+
+void ledOn(int led)
+{
+  digitalWrite(ledNum2Pin(led), HIGH);
+}
+
+void ledOnFor(int led, int delayON)
+{
+  ledOn(led);
+  delay(delayON);
+  ledOff(led);
+}
+
+int ledBlink(int led, int delayBlink)
+{
+  ledOn(led);
+  delay(delayBlink);
+  ledOff(led);
+  delay(delayBlink);
 }
 
 int readButtons(void)
@@ -179,23 +193,22 @@ int readButtons(void)
   {
     if(digitalRead(SW_PIN1))
     {
-      //ledsON()
-      delay(300);
+      ledOnFor(LED1, 300);
       return LED1;
     }
     if(digitalRead(SW_PIN2))
     {
-      delay(300);
+      ledOnFor(LED2, 300);
       return LED2;
     }
     if(digitalRead(SW_PIN3))
     {
-      delay(300);
+      ledOnFor(LED3, 300);
       return LED3;
     }
     if(digitalRead(SW_PIN4))
     {
-      delay(300);
+      ledOnFor(LED4, 300);
       return LED4;
     }
     delay(10);
@@ -226,7 +239,7 @@ void playSEQ(int *sequence, int nb_seq)
     Serial.print(" ");
     Serial.print(sequence[i]);
   #endif//DEBUG
-    ledsON(sequence[i]);
+    ledBlink(sequence[i], DELAYON);
   }
 #ifdef DEBUG
   Serial.println();
@@ -236,8 +249,10 @@ void playSEQ(int *sequence, int nb_seq)
 int readSEQ(int *seq, int nb_seq)
 {
   disableInterrupts();
+  /* Joue la séquance */
   for(int i=0 ; i < nb_seq ; i++)
   {
+    /* Lit les buttons et compare dans la séquance */
     if(seq[i] != readButtons())
     {
     #ifdef DEBUG
@@ -264,20 +279,20 @@ int randomLED(void)
   return ESP8266TrueRandom.random(1, nb_led+1);
 }
 
-void signal(int nb, int delay_)
+void signal(int nb, int delayBlink)
 {
   for(int i=0 ; i < nb ; i++)
   {
-    digitalWrite(LED_PIN1, HIGH);
-    digitalWrite(LED_PIN2, HIGH);
-    digitalWrite(LED_PIN3, HIGH);
-    digitalWrite(LED_PIN4, HIGH);
-    delay(delay_);
-    digitalWrite(LED_PIN1, LOW);
-    digitalWrite(LED_PIN2, LOW);
-    digitalWrite(LED_PIN3, LOW);
-    digitalWrite(LED_PIN4, LOW);
-    delay(delay_);
+    ledOn(LED1);
+    ledOn(LED2);
+    ledOn(LED3);
+    ledOn(LED4);
+    delay(delayBlink);
+    ledOff(LED1);
+    ledOff(LED2);
+    ledOff(LED3);
+    ledOff(LED4);
+    delay(delayBlink);
   }
 }
 
