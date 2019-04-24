@@ -13,18 +13,23 @@ Description: Jeu du SIMON, un jeu de mémoire
 /* DEBUG MODE */
 #define DEBUG
 
+/* MODE */
+#define TONE_MOD
+
 /* PINOUTS */
-#define LED_PIN1 D0
-#define LED_PIN2 D1
-#define LED_PIN3 D2
-#define LED_PIN4 D3
+#define BZ_PIN   D0
 
-#define SW_PIN1 D5
-#define SW_PIN2 D6
-#define SW_PIN3 D7
-#define SW_PIN4 D8
+#define LED_PIN1 D1
+#define LED_PIN2 D2
+#define LED_PIN3 D3
+#define LED_PIN4 D4
 
-#define DELAYON 500               // Temps de clignotement dans LEDS [ms]
+#define SW_PIN1  D5
+#define SW_PIN2  D6
+#define SW_PIN3  D7
+#define SW_PIN4  D8
+
+#define DELAYON  500               // Temps de clignotement dans LEDS [ms]
 #define DELAYSEQ 1500             // Délais entre la fin de la saisie et la prochaine séquence [ms]
 #define SEQ_SIZE 128              // Taille du temps contenant la séquence
 
@@ -36,10 +41,17 @@ enum{
 };
 const int nb_led = 4;
 
+#ifdef TONE_MOD
+int tone_freq[] = {
+  1000,
+  2000,
+  3000,
+  4000
+};
+#endif//TONE_MOD
+
 /* PROTOTYPE */
 void addLED2SEQ(int*, int);
-int initInterruptSW(int button);
-//int initInterruptSW(int button, void *buttonISR);
 int ledNum2Pin(int led);
 void ledOff(int led);
 void ledOn(int led);
@@ -51,7 +63,7 @@ void playSEQ(int*, int);
 void signal(int, int);
 void validate(void);
 
-void buttonISR(void);
+
 
 /*********/
 /* SETUP */
@@ -69,12 +81,12 @@ void setup(void)
   pinMode(LED_PIN3, OUTPUT);
   pinMode(LED_PIN4, OUTPUT);
 
+  pinMode(BZ_PIN, OUTPUT);
+
   pinMode(SW_PIN1, INPUT);
   pinMode(SW_PIN2, INPUT);
   pinMode(SW_PIN3, INPUT);
-  //pinMode(SW_PIN4, INPUT);
-
-  initInterruptSW(SW_PIN4);
+  pinMode(SW_PIN4, INPUT);
 
   randomSeed(analogRead(0));
 }
@@ -85,12 +97,14 @@ void setup(void)
 /********/
 void loop(void)
 {
+
   int i = 1;
   int seq_leds[SEQ_SIZE];
 
 #ifdef DEBUG
   Serial.println("START GAME");
 #endif//DEBUG
+
   validate();
 
   while(true)
@@ -106,7 +120,9 @@ void loop(void)
     i++;
     delay(DELAYSEQ);
   }
-
+#ifdef TONE_MOD
+  noTone(BZ_PIN);
+#endif//TONE_MOD
 #ifdef DEBUG
   Serial.println("END GAME");
 #endif//DEBUG
@@ -116,35 +132,6 @@ void loop(void)
 /****************/
 /* INPUT/OUTPUT */
 /****************/
-int initInterruptSW(int button)
-//int initInterruptSW(int button, void *buttonISR_)
-{
-  pinMode(button, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(button), buttonISR, RISING);
-  //attachInterrupt(digitalPinToInterrupt(button), buttonISR_, RISING);
-}
-
-void enableInterrupts()
-{
-  initInterruptSW(SW_PIN1);
-  initInterruptSW(SW_PIN2);
-  initInterruptSW(SW_PIN3);
-  initInterruptSW(SW_PIN4);
-}
-
-void disableInterrupts()
-{
-  detachInterrupt(digitalPinToInterrupt(SW_PIN1));
-  detachInterrupt(digitalPinToInterrupt(SW_PIN2));
-  detachInterrupt(digitalPinToInterrupt(SW_PIN3));
-  detachInterrupt(digitalPinToInterrupt(SW_PIN4));
-}
-
-void buttonISR(void)
-{
-  Serial.println("interrupt");
-}
-
 int ledNum2Pin(int led)
 {
   switch(led)
@@ -193,22 +180,34 @@ int readButtons(void)
   {
     if(digitalRead(SW_PIN1))
     {
-      ledOnFor(LED1, 300);
+    #ifdef TONE_MOD
+      tone(BZ_PIN, tone_freq[0], DELAYON);
+    #endif//TONE_MOD
+      ledOnFor(LED1, DELAYON);
       return LED1;
     }
     if(digitalRead(SW_PIN2))
     {
-      ledOnFor(LED2, 300);
+    #ifdef TONE_MOD
+      tone(BZ_PIN, tone_freq[1], DELAYON);
+    #endif//TONE_MOD
+      ledOnFor(LED2, DELAYON);
       return LED2;
     }
     if(digitalRead(SW_PIN3))
     {
-      ledOnFor(LED3, 300);
+    #ifdef TONE_MOD
+      tone(BZ_PIN, tone_freq[2], DELAYON);
+    #endif//TONE_MOD
+      ledOnFor(LED3, DELAYON);
       return LED3;
     }
     if(digitalRead(SW_PIN4))
     {
-      ledOnFor(LED4, 300);
+    #ifdef TONE_MOD
+      tone(BZ_PIN, tone_freq[3], DELAYON);
+    #endif//TONE_MOD
+      ledOnFor(LED4, DELAYON);
       return LED4;
     }
     delay(10);
@@ -239,6 +238,9 @@ void playSEQ(int *sequence, int nb_seq)
     Serial.print(" ");
     Serial.print(sequence[i]);
   #endif//DEBUG
+#ifdef TONE_MOD
+    tone(BZ_PIN, tone_freq[sequence[i]-1], DELAYON);
+#endif//TONE_MOD
     ledBlink(sequence[i], DELAYON);
   }
 #ifdef DEBUG
@@ -248,7 +250,6 @@ void playSEQ(int *sequence, int nb_seq)
 
 int readSEQ(int *seq, int nb_seq)
 {
-  disableInterrupts();
   /* Joue la séquance */
   for(int i=0 ; i < nb_seq ; i++)
   {
@@ -262,7 +263,6 @@ int readSEQ(int *seq, int nb_seq)
       return 1;
     }
   }
-  enableInterrupts();
 
 #ifdef DEBUG
   Serial.println("Séquence OK");

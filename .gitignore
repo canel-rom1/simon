@@ -1,3 +1,4 @@
+*.save
 *.swp
 build-esp8266-*
 Makefile
