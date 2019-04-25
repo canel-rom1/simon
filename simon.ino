@@ -43,10 +43,10 @@ const int nb_led = 4;
 
 #ifdef TONE_MOD
 int tone_freq[] = {
-  1000,
-  2000,
-  3000,
-  4000
+  523,
+  587,
+  659,
+  498
 };
 #endif//TONE_MOD
 
@@ -88,7 +88,7 @@ void setup(void)
   pinMode(SW_PIN3, INPUT);
   pinMode(SW_PIN4, INPUT);
 
-  randomSeed(analogRead(0));
+  //randomSeed(analogRead(0)+1);
 }
 
 
